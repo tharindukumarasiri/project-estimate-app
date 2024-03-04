@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Card,
   Table,
@@ -11,6 +11,8 @@ import {
   TableRow,
   TextInput,
   Textarea,
+  Select,
+  SelectItem,
   MultiSelect,
   MultiSelectItem,
   Button,
@@ -18,30 +20,43 @@ import {
   List,
   ListItem,
 } from "@tremor/react";
-import { RiAddLine } from "@remixicon/react";
+import { RiAddLine, RiDeleteBinLine } from "@remixicon/react";
 
 import askOpenAi from "../lib/openai";
-import { questionPostfix, questionPrefix, technologies } from "@/constants";
+import {
+  questionPostfix,
+  questionPrefix,
+  quotationQuestion,
+  technologies,
+} from "@/constants";
 
 type taskListProps = { task: string; description: string };
 type inputDataProps = {
   task: string;
   description: string;
   technologies: string[] | [];
+  developersCount: string;
 };
 
 const inputObj = {
   task: "",
   description: "",
   technologies: [],
+  developersCount: "1",
 };
+
+const numbersList = Array.from({ length: 30 }, (_, i) => i + 1);
 
 export default function Home() {
   const [taskList, setTaskList] = useState<taskListProps[] | []>([]);
   const [inputData, setInputData] = useState<inputDataProps>(inputObj);
   const [result, setResult] = useState<string[]>([]);
+  const [quotation, setQuotation] = useState("");
   const [showInputError, setShowInputError] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const RESULTS_REF = useRef<HTMLDivElement>(null);
+  const ESTIMATION_REF = useRef<HTMLDivElement>(null);
 
   const addNewTask = () => {
     if (!inputData?.task) {
@@ -63,6 +78,13 @@ export default function Home() {
     }));
   };
 
+  const deleteTask = (taskId: number) => {
+    const newTaskList = [...taskList];
+    newTaskList.splice(taskId, 1);
+
+    setTaskList(newTaskList);
+  };
+
   const handleInput = (
     e:
       | React.ChangeEvent<HTMLInputElement>
@@ -81,6 +103,11 @@ export default function Home() {
   const onCalculate = async () => {
     setLoading(true);
     let question = questionPrefix;
+
+    question = question.concat(
+      inputData.developersCount,
+      " developers working using"
+    );
 
     inputData?.technologies?.map((technologyIndex) => {
       const index = Number(technologyIndex);
@@ -105,9 +132,30 @@ export default function Home() {
         setResult(resultList);
       })
       .catch((error) => {
-        setResult([JSON.stringify(error)]);
+        setResult(["Error while loading please try again"]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        RESULTS_REF?.current?.scrollIntoView({ behavior: "smooth" });
+        setLoading(false);
+      });
+  };
+
+  const onGetQuotation = async () => {
+    setLoading(true);
+
+    askOpenAi(quotationQuestion)
+      .then((response) => {
+        const result = response.choices[0].message.content || "";
+
+        setQuotation(result);
+      })
+      .catch(() => {
+        setQuotation("Error while loading please try again");
+      })
+      .finally(() => {
+        ESTIMATION_REF?.current?.scrollIntoView({ behavior: "smooth" });
+        setLoading(false);
+      });
   };
 
   const onTechnologySelect = (value: string[]) => {
@@ -117,14 +165,75 @@ export default function Home() {
     }));
   };
 
+  const onDeveloperCountSelect = (value: string) => {
+    setInputData((prevState) => ({
+      ...prevState,
+      developersCount: value,
+    }));
+  };
+
+  const getResultsCard = () => {
+    return (
+      <div ref={RESULTS_REF}>
+        {result?.length > 0 && (
+          <Card className="mx-auto max-w-5xl mt-10">
+            <h1 className="mb-5">Result</h1>
+
+            <h2>{result[0]}</h2>
+            <Divider></Divider>
+            <h1 className="mb-5">Breakdown</h1>
+
+            <List>
+              {result.map((item, index) => {
+                if (index === 0) return;
+                let resultParts = item.split(":");
+                if (resultParts?.length === 1) resultParts = item.split(" - ");
+                return (
+                  <ListItem key={index}>
+                    <span>{resultParts[0]}</span>
+                    <span>{resultParts[1]}</span>
+                  </ListItem>
+                );
+              })}
+            </List>
+            <div className="flex justify-center mt-5">
+              <Button
+                variant="secondary"
+                onClick={onGetQuotation}
+                loading={loading}
+              >
+                Get quotation
+              </Button>
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-24">
-      <p className="text-tremor-metric text-center font-semibold text-tremor-content-strong mb-20">
+      <p className="fixed top-0 z-10 text-tremor-metric text-center font-semibold text-gray-700 p-7 bg-slate-200 w-full">
         Project Time Estimate Calculator
       </p>
 
-      <Card className="mx-auto max-w-5xl">
+      <Card className="mx-auto max-w-5xl mt-14">
         <h1 className="mb-10">Project Estimation</h1>
+
+        <p className="whitespace-nowrap text-left font-semibold px-4 py-3.5 text-tremor-content-strong">
+          Number of Developers working
+        </p>
+        <Select
+          onValueChange={onDeveloperCountSelect}
+          className="mx-4 max-w-xs mb-10"
+          value={inputData.developersCount}
+        >
+          {numbersList.map((value) => (
+            <SelectItem key={value} value={value.toString()}>
+              {value}
+            </SelectItem>
+          ))}
+        </Select>
 
         <p className="whitespace-nowrap text-left font-semibold px-4 py-3.5 text-tremor-content-strong">
           Technologies using
@@ -155,6 +264,14 @@ export default function Home() {
                   <TableCell className="text-wrap">{task.task}</TableCell>
                   <TableCell className="text-wrap">
                     {task.description}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="light"
+                      icon={RiDeleteBinLine}
+                      onClick={() => deleteTask(index)}
+                      className="text-red-500 hover:text-red-700"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -212,26 +329,13 @@ export default function Home() {
           </Button>
         </div>
       </Card>
-      {result?.length > 0 && (
-        <Card className="mx-auto max-w-5xl mt-10">
-          <h1 className="mb-5">Result</h1>
 
-          <h2>{result[0]}</h2>
-          <Divider></Divider>
-          <h1 className="mb-5">Breakdown</h1>
+      {getResultsCard()}
 
-          <List>
-            {result.map((item, index) => {
-              if (index === 0) return;
-              const resultParts = item.split(":");
-              return (
-                <ListItem key={index}>
-                  <span>{resultParts[0]}</span>
-                  <span>{resultParts[1]}</span>
-                </ListItem>
-              );
-            })}
-          </List>
+      {quotation && (
+        <Card className="mx-auto max-w-5xl mt-10" ref={ESTIMATION_REF}>
+          <h1 className="mb-5">Project estimation</h1>
+          {quotation}
         </Card>
       )}
     </main>
