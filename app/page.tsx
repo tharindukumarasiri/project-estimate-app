@@ -104,8 +104,8 @@ export default function Home() {
 
         setResult(resultList);
       })
-      .catch(() => {
-        setResult(["Error while loading please try again"]);
+      .catch((error) => {
+        setResult([error]);
       })
       .finally(() => setLoading(false));
   };
