@@ -105,7 +105,7 @@ export default function Home() {
         setResult(resultList);
       })
       .catch((error) => {
-        setResult([error]);
+        setResult([JSON.stringify(error)]);
       })
       .finally(() => setLoading(false));
   };
