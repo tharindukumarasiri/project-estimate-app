@@ -16,7 +16,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body>
+        <p className="fixed top-0 z-10 text-tremor-metric text-center font-semibold text-gray-700 p-7 bg-slate-200 w-full">
+          Project Time Estimate Calculator
+        </p>
+
+        <main className={inter.className}>{children}</main>
+      </body>
     </html>
   );
 }

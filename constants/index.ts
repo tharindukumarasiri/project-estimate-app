@@ -12,6 +12,13 @@ export const technologies = [
   "Spring Boot",
 ];
 
+export const constructionTypes = [
+  "Residential",
+  "Industrial",
+  "Commercial",
+  "Infrastructure",
+];
+
 export const questionPrefix =
   "please give me the answer as a approximate week range. How long will it take to recreate bellow requirements as a website from the scratch if ";
 
@@ -20,3 +27,6 @@ export const questionPostfix =
 
 export const quotationQuestion =
   "how much will it costs to create above project. give me an rough estimate number only";
+
+export const constructionPrefix =
+  "please give me the answer as a approximate week range. How long will it take to construct a ";
